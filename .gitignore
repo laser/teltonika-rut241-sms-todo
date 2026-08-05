@@ -1,6 +1,28 @@
+# Local configuration, state, and logs
 config.json
 state.json
 *.log
+.env
+
+# Application builds
 teltonika-rut241-sms-todo
 dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test and profiling artifacts
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Legacy Python cache files
 __pycache__/

@@ -219,9 +219,10 @@ sudo mkdir -p /opt/teltonika-rut241-sms-todo
 sudo install -m 755 teltonika-rut241-sms-todo \
   /opt/teltonika-rut241-sms-todo/teltonika-rut241-sms-todo
 
-sudo install -m 600 config.example.json \
+sudo install -o root -g pi -m 640 config.example.json \
   /etc/teltonika-rut241-sms-todo.json
-sudo install -m 600 systemd/teltonika-rut241-sms-todo.env.example \
+sudo install -o root -g root -m 600 \
+  systemd/teltonika-rut241-sms-todo.env.example \
   /etc/teltonika-rut241-sms-todo.env
 sudo install -m 644 systemd/teltonika-rut241-sms-todo.service \
   /etc/systemd/system/teltonika-rut241-sms-todo.service

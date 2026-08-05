@@ -46,7 +46,7 @@ package: build-pi
     install -m 755 "{{build_dir}}/{{binary}}-linux-armv7" "$package_dir/{{binary}}"
     install -m 644 README.md config.example.json "$package_dir/"
     install -m 644 systemd/{{binary}}.service systemd/{{binary}}.env.example "$package_dir/systemd/"
-    tar -C "$staging_dir" -czf "{{archive}}" "{{package_name}}"
+    COPYFILE_DISABLE=1 tar --no-xattrs -C "$staging_dir" -czf "{{archive}}" "{{package_name}}"
     shasum -a 256 "{{archive}}" > "{{archive}}.sha256"
     echo "Created {{archive}}"
 

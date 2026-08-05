@@ -1,0 +1,6 @@
+config.json
+state.json
+*.log
+teltonika-rut241-sms-todo
+dist/
+__pycache__/

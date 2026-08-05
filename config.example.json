@@ -1,0 +1,19 @@
+{
+  "router": {
+    "url": "https://192.168.8.221",
+    "username": "admin",
+    "password_env": "RUT241_PASSWORD",
+    "modem_id": "1-1",
+    "verify_tls": false
+  },
+  "state_file": "/var/lib/teltonika-rut241-sms-todo/state.json",
+  "poll_interval_seconds": 5,
+  "max_todo_length": 300,
+  "users": [
+    {
+      "phone_number": "+12065550123",
+      "daily_time": "08:00",
+      "timezone": "America/Los_Angeles"
+    }
+  ]
+}

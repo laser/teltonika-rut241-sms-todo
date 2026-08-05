@@ -1,0 +1,25 @@
+[Unit]
+Description=Teltonika RUT241 SMS Todo service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/teltonika-rut241-sms-todo
+EnvironmentFile=/etc/teltonika-rut241-sms-todo.env
+ExecStart=/opt/teltonika-rut241-sms-todo/teltonika-rut241-sms-todo -config /etc/teltonika-rut241-sms-todo.json run
+Restart=on-failure
+RestartSec=10
+UMask=0077
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

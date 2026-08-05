@@ -1,5 +1,7 @@
 # Teltonika RUT241 SMS Todo
 
+[![Check](https://github.com/laser/teltonika-rut241-sms-todo/actions/workflows/check.yml/badge.svg)](https://github.com/laser/teltonika-rut241-sms-todo/actions/workflows/check.yml)
+
 Teltonika RUT241 SMS Todo is a multi-user todo service controlled entirely by
 SMS. It polls a Teltonika RUT241 inbox over HTTPS, keeps each phone number's
 todos separate, and sends each user a daily todo list in their configured time
@@ -118,9 +120,13 @@ format, such as `+12065550123`.
 Build and test the application:
 
 ```bash
-go test ./...
-go build -o teltonika-rut241-sms-todo .
+just check
+just build-macos
 ```
+
+`just build-macos` creates Apple Silicon and Intel binaries under `dist/`.
+Run `just --list` to see all available build and release targets. Direct Go
+commands also work if `just` is not installed.
 
 Validate the configuration:
 
@@ -168,13 +174,40 @@ service reads it from the environment variable named by `password_env`.
 Build a static 32-bit ARMv7 binary on macOS:
 
 ```bash
-mkdir -p dist
-CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-  go build -trimpath -o dist/teltonika-rut241-sms-todo .
+just build-pi
 ```
 
 The resulting binary runs on the Raspberry Pi without installing Go or
-upgrading the Pi's Python version.
+upgrading the Pi's Python version. It is written to
+`dist/teltonika-rut241-sms-todo-linux-armv7`.
+
+Create a Raspberry Pi release archive containing the binary, configuration
+example, systemd files, and README:
+
+```bash
+just package
+```
+
+Publish that archive and its SHA-256 checksum as a GitHub Release:
+
+```bash
+VERSION=v0.1.0 just release
+```
+
+The release target requires the GitHub CLI to be installed and authenticated.
+It refuses to publish unless the working tree is clean and the current commit
+matches `origin/main`. The GitHub CLI creates the release tag on `main` and
+generates release notes automatically.
+
+On the Raspberry Pi, install the GitHub CLI and download a release manually,
+or download the ARMv7 package directly from the repository's Releases page.
+For example, with the GitHub CLI available:
+
+```bash
+gh release download v0.1.0 \
+  --repo laser/teltonika-rut241-sms-todo \
+  --pattern '*-linux-armv7.tar.gz*'
+```
 
 ## Raspberry Pi and systemd installation
 
@@ -183,7 +216,7 @@ and service unit to the Pi. On the Pi, install them with:
 
 ```bash
 sudo mkdir -p /opt/teltonika-rut241-sms-todo
-sudo install -m 755 dist/teltonika-rut241-sms-todo \
+sudo install -m 755 teltonika-rut241-sms-todo \
   /opt/teltonika-rut241-sms-todo/teltonika-rut241-sms-todo
 
 sudo install -m 600 config.example.json \

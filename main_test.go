@@ -202,6 +202,86 @@ func TestUnknownPhoneIsIgnored(t *testing.T) {
 	}
 }
 
+func TestCarrierFailuresAreIgnoredWithoutChangingTodos(t *testing.T) {
+	for _, notice := range []string{
+		"Free Msg: Unable to send message - Message Blocking is active",
+		" Unable to send message - Message Blocking is active.\n",
+		"FREE MSG: Unable to send message – Message Blocking is active",
+		"FreeMsg: Receiver 12065550101 unable to receive message - Message Blocking is active.",
+	} {
+		t.Run(notice, func(t *testing.T) {
+			_, store, service := testService(t)
+			phone := "+12065550101"
+			service.handleMessage(phone, "call mom", time.Now())
+			before, _ := json.Marshal(store.state)
+			reply, shouldReply := service.handleMessage(phone, notice, time.Now())
+			after, _ := json.Marshal(store.state)
+			if shouldReply || reply != "" || string(before) != string(after) {
+				t.Fatalf("carrier notice changed state or triggered a reply: %q", reply)
+			}
+		})
+	}
+}
+
+func TestTodoMentioningMessageBlockingIsAccepted(t *testing.T) {
+	_, _, service := testService(t)
+	for index, todo := range []string{
+		"Call Tello because Message Blocking is active",
+		"Investigate Free Msg: Unable to send message - Message Blocking is active",
+		"Free Msg: pick up groceries",
+	} {
+		reply, shouldReply := service.handleMessage("+12065550101", todo, time.Now())
+		if !shouldReply || !strings.Contains(reply, todo) {
+			t.Fatalf("ordinary todo %d was ignored: %q", index, todo)
+		}
+	}
+}
+
+func TestCarrierNoticePollingAndRestartDoNotReply(t *testing.T) {
+	config, store, service := testService(t)
+	store.state.Initialized = true
+	phone := "+12065550101"
+	service.handleMessage(phone, "call mom", time.Now())
+	router := &fakeRouter{messages: []Message{{
+		ID: "1", ModemID: "1-1", Sender: phone,
+		Message: "Free Msg: Unable to send message - Message Blocking is active",
+		Date:    "2026-11-07 08:00:00",
+	}}}
+	app := newApp(config, store, router)
+	if err := app.processIncoming(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	// Restart with persisted state, then receive another notice with a new ID.
+	reloaded, err := loadState(config.StateFile, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reloaded.hasProcessed(router.messages[0].key()) {
+		t.Fatal("ignored carrier notice was not persisted as processed")
+	}
+	duplicate := router.messages[0]
+	duplicate.ID = "2"
+	router.messages = append(router.messages, duplicate)
+	app = newApp(config, reloaded, router)
+	if err := app.processIncoming(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if len(router.sent) != 0 || app.service.todoList(phone) != "0: call mom" ||
+		reloaded.state.Users[phone].NextTodoNumber != 1 || !reloaded.hasProcessed(duplicate.key()) {
+		t.Fatal("carrier notices triggered replies, changed todos, or were not marked processed")
+	}
+	// The next real command still works, with no number consumed by notices.
+	router.messages = append(router.messages, Message{
+		ID: "3", ModemID: "1-1", Sender: phone, Message: "buy milk", Date: "2026-11-07 08:01:00",
+	})
+	if err := app.processIncoming(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if len(router.sent) != 1 || router.sent[0].message != "0: call mom\n1: buy milk" {
+		t.Fatalf("normal command after carrier notices: %#v", router.sent)
+	}
+}
+
 func TestDailyScheduleUsesLocalTimezone(t *testing.T) {
 	_, _, service := testService(t)
 	before := time.Date(2026, 8, 5, 14, 59, 0, 0, time.UTC)

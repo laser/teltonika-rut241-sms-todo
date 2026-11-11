@@ -34,6 +34,9 @@ const (
 var (
 	phonePattern  = regexp.MustCompile(`^\+[1-9][0-9]{6,14}$`)
 	numberPattern = regexp.MustCompile(`^[0-9]+$`)
+	// Carrier failures can arrive with the intended recipient as the sender.
+	// Match the whole notice so ordinary todos discussing SMS still work.
+	messageBlockingPattern = regexp.MustCompile(`(?i)^(?:free\s*msg:\s*)?(?:(?:receiver|sender)\s+\+?[0-9]+\s+)?unable to (?:send|receive) message\s*[-–—]\s*message blocking is active\.?$`)
 )
 
 type RouterConfig struct {
@@ -277,6 +280,9 @@ func (s *TodoService) handleMessage(
 	if _, configured := s.config.usersByPhone[sender]; !configured {
 		return "", false
 	}
+	if isCarrierFailure(message) {
+		return "", false
+	}
 	userState := s.store.state.Users[sender]
 	message = strings.TrimSpace(message)
 
@@ -322,6 +328,10 @@ func (s *TodoService) handleMessage(
 		CreatedAt: now.UTC().Format(time.RFC3339Nano),
 	})
 	return s.todoList(sender), true
+}
+
+func isCarrierFailure(message string) bool {
+	return messageBlockingPattern.MatchString(strings.TrimSpace(message))
 }
 
 func (s *TodoService) todoList(phone string) string {
@@ -658,7 +668,11 @@ func (a *App) processIncoming(ctx context.Context, now time.Time) error {
 		log.Printf("processed message %s from %s", message.ID, message.Sender)
 
 		if !shouldReply {
-			log.Printf("ignored message from unconfigured number %s", message.Sender)
+			if isCarrierFailure(message.Message) {
+				log.Printf("ignored carrier message-blocking notice from %s; check carrier SMS service", message.Sender)
+			} else {
+				log.Printf("ignored message from unconfigured number %s", message.Sender)
+			}
 			continue
 		}
 		if err := a.sendText(ctx, message.Sender, reply); err != nil {

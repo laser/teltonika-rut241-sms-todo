@@ -57,6 +57,12 @@ meaning. Messages from phone numbers not listed in the configuration are
 ignored, preventing unknown senders from viewing data or triggering reply
 charges.
 
+Carrier `Unable to send/receive message - Message Blocking is active` notices
+are also ignored, even when they appear to come from a configured user. They
+are recorded as processed without adding a todo or sending a reply, preventing
+an SMS feedback loop. Ordinary todo text that mentions message blocking is
+still accepted.
+
 ## Daily lists and long messages
 
 Each user has an IANA time zone and a local delivery time. For example:
@@ -279,6 +285,11 @@ and SMS chunking.
 
 ## Operational notes
 
+- If carrier error notices were previously added as todos, stop the service,
+  back up the state file, and remove only those error entries before restarting
+  with the filter installed. Preserve real todos, their numbers, processed
+  message keys, and daily-delivery bookkeeping. Check the SIM provider's SMS
+  service and balance separately; the application cannot clear a carrier block.
 - The service records command state before sending a reply, so restarting it
   cannot apply the same inbound command twice.
 - The RUT241 API does not offer SMS idempotency keys. Daily delivery attempts
